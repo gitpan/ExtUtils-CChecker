@@ -1,0 +1,166 @@
+NAME
+    "ExtUtils::CChecker" - configure-time utilities for using C headers,
+    libraries, or OS features
+
+SYNOPSIS
+     use Module::Build;
+     use ExtUtils::CChecker;
+
+     my $check_PF_MOONLASER = <<'EOF';
+     #include <stdio.h>
+     #include <sys/socket.h>
+     int main(int argc, char *argv[]) {
+       printf("PF_MOONLASER is %d\n", PF_MOONLASER);
+       return 0;
+     }
+     EOF
+
+     ExtUtils::CChecker->new->assert_compile_run(
+        diag => "no PF_MOONLASER",
+        source => $check_PF_MOONLASER,
+     );
+
+     Module::Build->new(
+       ...
+     )->create_build_script;
+
+DESCRIPTION
+    Often Perl modules are written to wrap functionallity found in existing
+    C headers, libraries, or to use OS-specific features. It is useful in
+    the Build.PL or Makefile.PL file to check for the existance of these
+    requirements before attempting to actually build the module.
+
+    Objects in this class provide an extension around ExtUtils::CBuilder to
+    simplify the creation of a .c file, compiling, linking and running it,
+    to test if a certain feature is present.
+
+    It may also be necessary to search for the correct library to link
+    against, or for the right include directories to find header files in.
+    This class also provides assistance here.
+
+CONSTRUCTOR
+  $cc = ExtUtils::CChecker->new
+    Returns a new instance of a "ExtUtils::CChecker" object.
+
+METHODS
+  $dirs = $cc->include_dirs
+    Returns the currently-configured include directories in an ARRAY
+    reference.
+
+  $flags = $cc->extra_linker_flags
+    Returns the currently-configured extra linker flags in a string
+
+  $success = $cc->try_compile_run( %args )
+  $success = $cc->try_compile_run( $source )
+    Try to complile, link, and execute a C program whose source is given.
+    Returns true if the program compiled and linked, and exited sucessfully.
+    Returns false if any of these steps fail.
+
+    Takes the following named arguments. If a single argument is given, that
+    is taken as the source string.
+
+    *       source => STRING
+
+            The source code of the C program to try compiling, building, and
+            running.
+
+    *       extra_linker_flags => STRING
+
+            Optional. If specified, pass extra flags to the linker.
+
+  $cc->assert_compile_run( %args )
+    Calls "try_compile_run". If it fails, die with an "OS unsupported"
+    message. Useful to call from Build.PL or Makefile.PL.
+
+    Takes one extra optional argument:
+
+    *       diag => STRING
+
+            If present, this string will be appended to the failure message
+            if one is generated. It may provide more useful information to
+            the user on why the OS is unsupported.
+
+  $cc->find_include_dirs_for( %args )
+    Try to compile, link and execute the given source, using extra include
+    directories.
+
+    When a usable combination is found, the directories required are stored
+    in the object for use in further compile operations, or returned by
+    "include_dirs".
+
+    If no usable combination is found, an assertion message is thrown.
+
+    Takes the following arguments:
+
+    *       source => STRING
+
+            Source code to compile
+
+    *       dirs => ARRAY of ARRAYs
+
+            Gives a list of sets of dirs. Each set of dirs should be strings
+            in its own array reference.
+
+    *       diag => STRING
+
+            If present, this string will be appended to the failure message
+            if one is generated.
+
+  $cc->find_libs_for( %args )
+    Try to compile, link and execute the given source, when linked against a
+    given set of extra libraries.
+
+    When a usable combination is found, the libraries required are stored in
+    the object for use in further link operations, or returned by
+    "extra_linker_flags".
+
+    If no usable combination is found, an assertion message is thrown.
+
+    Takes the following arguments:
+
+    *       source => STRING
+
+            Source code to compile
+
+    *       libs => ARRAY of STRINGs
+
+            Gives a list of sets of libraries. Each set of libraries should
+            be space-separated.
+
+    *       diag => STRING
+
+            If present, this string will be appended to the failure message
+            if one is generated.
+
+EXAMPLES
+  Socket Libraries
+    Some operating systems provide the BSD sockets API in their primary
+    libc. Others keep it in a separate library which should be linked
+    against. The following example demonstrates how this would be handled.
+
+     use Module::Build;
+     use ExtUtils::CChecker;
+
+     my $cc = ExtUtils::CChecker->new;
+
+     $cc->find_libs_for(
+        diag => "no socket()",
+        libs => [ "", "socket nsl" ],
+        source => q[
+     #include <sys/socket.h>
+     int main(int argc, char *argv) {
+       int fd = socket(PF_INET, SOCK_STREAM, 0);
+       if(fd < 0)
+         return 1;
+       return 0;
+     }
+     ] );
+
+     Module::Build->new(
+        extra_linker_flags => $cc->extra_linker_flags,
+        ...
+     );
+
+AUTHOR
+    Paul Evans <leonerd@leonerd.org.uk>
+
