@@ -1,0 +1,8 @@
+Revision history for ExtUtils-CChecker
+
+0.02    CHANGES:
+         * Support automatic construction of a preconfigured Module::Build
+         * Also implement extra_compiler_flags for completeness
+
+0.01    First version, released on an unsuspecting world.
+

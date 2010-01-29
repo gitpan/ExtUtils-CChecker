@@ -47,8 +47,13 @@ METHODS
     Returns the currently-configured include directories in an ARRAY
     reference.
 
+  $flags = $cc->extra_compiler_flags
+    Returns the currently-configured extra compiler flags in an ARRAY
+    reference.
+
   $flags = $cc->extra_linker_flags
-    Returns the currently-configured extra linker flags in a string
+    Returns the currently-configured extra linker flags in an ARRAY
+    reference.
 
   $success = $cc->try_compile_run( %args )
   $success = $cc->try_compile_run( $source )
@@ -64,7 +69,11 @@ METHODS
             The source code of the C program to try compiling, building, and
             running.
 
-    *       extra_linker_flags => STRING
+    *       extra_compiler_flags => ARRAY
+
+            Optional. If specified, pass extra flags to the compiler.
+
+    *       extra_linker_flags => ARRAY
 
             Optional. If specified, pass extra flags to the linker.
 
@@ -132,6 +141,15 @@ METHODS
             If present, this string will be appended to the failure message
             if one is generated.
 
+  $mb = $cc->new_module_build( %args )
+    Construct and return a new Module::Build object, preconfigured with the
+    "include_dirs", "extra_compiler_flags" and "extra_linker_flags" options
+    that have been configured on this object, by the above methods.
+
+    This is provided as a simple shortcut for the common use case, that a
+    Build.PL file is using the "ExtUtils::CChecker" object to detect the
+    required arguments to pass.
+
 EXAMPLES
   Socket Libraries
     Some operating systems provide the BSD sockets API in their primary
@@ -156,10 +174,17 @@ EXAMPLES
      }
      ] );
 
-     Module::Build->new(
-        extra_linker_flags => $cc->extra_linker_flags,
+     $cc->new_module_build(
+        module_name => "Your::Name::Here",
+        requires => {
+           'IO::Socket' => 0,
+        },
         ...
-     );
+     )->create_build_script;
+
+    By using the "new_module_build" method, the detected
+    "extra_linker_flags" value has been automatically passed into the new
+    "Module::Build" object.
 
 AUTHOR
     Paul Evans <leonerd@leonerd.org.uk>

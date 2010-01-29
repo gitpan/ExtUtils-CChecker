@@ -17,9 +17,9 @@ name: ExtUtils-CChecker
 provides:
   ExtUtils::CChecker:
     file: lib/ExtUtils/CChecker.pm
-    version: 0.01
+    version: 0.02
 requires:
   ExtUtils::CBuilder: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.01
+version: 0.02

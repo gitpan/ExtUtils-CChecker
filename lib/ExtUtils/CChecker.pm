@@ -8,7 +8,7 @@ package ExtUtils::CChecker;
 use strict;
 use warnings;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Carp;
 
@@ -79,8 +79,9 @@ sub new
       cb  => $cb,
       seq => 0,
 
-      include_dirs => [],
-      extra_linker_flags => "",
+      include_dirs         => [],
+      extra_compiler_flags => [],
+      extra_linker_flags   => [],
    }, $class;
 }
 
@@ -101,16 +102,30 @@ sub include_dirs
    return [ @{ $self->{include_dirs} } ];
 }
 
+=head2 $flags = $cc->extra_compiler_flags
+
+Returns the currently-configured extra compiler flags in an ARRAY reference.
+
+=cut
+
+sub extra_compiler_flags
+{
+   my $self = shift;
+   # clone it just so caller can't modify ours
+   return [ @{ $self->{extra_compiler_flags} } ];
+}
+
 =head2 $flags = $cc->extra_linker_flags
 
-Returns the currently-configured extra linker flags in a string
+Returns the currently-configured extra linker flags in an ARRAY reference.
 
 =cut
 
 sub extra_linker_flags
 {
    my $self = shift;
-   return $self->{extra_linker_flags};
+   # clone it just so caller can't modify ours
+   return [ @{ $self->{extra_linker_flags} } ];
 }
 
 sub cbuilder
@@ -125,6 +140,7 @@ sub compile
    my %args = @_;
 
    $args{include_dirs} = [ map { defined $_ ? @$_ : () } $self->{include_dirs}, $args{include_dirs} ];
+   $args{extra_compiler_flags} = [ map { defined $_ ? @$_ : () } $self->{extra_compiler_flags}, $args{extra_compiler_flags} ];
 
    $self->cbuilder->compile( %args );
 }
@@ -134,7 +150,7 @@ sub link_executable
    my $self = shift;
    my %args = @_;
 
-   $args{extra_linker_flags} = join " ", grep defined, $self->{extra_linker_flags}, $args{extra_linker_flags};
+   $args{extra_linker_flags} = [ map { defined $_ ? @$_ : () } $self->{extra_linker_flags}, $args{extra_linker_flags} ];
 
    $self->cbuilder->link_executable( %args );
 }
@@ -165,7 +181,11 @@ taken as the source string.
 
 The source code of the C program to try compiling, building, and running.
 
-=item * extra_linker_flags => STRING
+=item * extra_compiler_flags => ARRAY
+
+Optional. If specified, pass extra flags to the compiler.
+
+=item * extra_linker_flags => ARRAY
 
 Optional. If specified, pass extra flags to the linker.
 
@@ -195,6 +215,7 @@ sub try_compile_run
    );
 
    $compile_args{include_dirs} = $args{include_dirs} if exists $args{include_dirs};
+   $compile_args{extra_compiler_flags} = $args{extra_compiler_flags} if exists $args{extra_compiler_flags};
 
    my $test_obj = eval { $self->compile( %compile_args ) };
 
@@ -355,15 +376,40 @@ sub find_libs_for
    ref( my $libs = $args{libs} ) eq "ARRAY" or croak "Expected 'libs' as ARRAY ref";
 
    foreach my $l ( @$libs ) {
-      my $extra_linker_flags = join( " ", map { "-l$_" } split m/\s+/, $l );
+      my @extra_linker_flags = map { "-l$_" } split m/\s+/, $l;
 
-      $self->try_compile_run( %args, extra_linker_flags => $extra_linker_flags ) or next;
+      $self->try_compile_run( %args, extra_linker_flags => \@extra_linker_flags ) or next;
 
-      $self->{extra_linker_flags} = join " ", grep defined, $self->{extra_linker_flags}, $extra_linker_flags;
+      push @{ $self->{extra_linker_flags} }, @extra_linker_flags;
       return;
    }
 
    $self->fail( $diag );
+}
+
+=head2 $mb = $cc->new_module_build( %args )
+
+Construct and return a new L<Module::Build> object, preconfigured with the
+C<include_dirs>, C<extra_compiler_flags> and C<extra_linker_flags> options
+that have been configured on this object, by the above methods.
+
+This is provided as a simple shortcut for the common use case, that a
+F<Build.PL> file is using the C<ExtUtils::CChecker> object to detect the
+required arguments to pass.
+
+=cut
+
+sub new_module_build
+{
+   my $self = shift;
+   require Module::Build;
+
+   return Module::Build->new(
+      include_dirs         => $self->include_dirs,
+      extra_compiler_flags => $self->extra_compiler_flags,
+      extra_linker_flags   => $self->extra_linker_flags,
+      @_,
+   );
 }
 
 # Keep perl happy; keep Britain tidy
@@ -397,10 +443,16 @@ following example demonstrates how this would be handled.
  }
  ] );
 
- Module::Build->new(
-    extra_linker_flags => $cc->extra_linker_flags,
+ $cc->new_module_build(
+    module_name => "Your::Name::Here",
+    requires => {
+       'IO::Socket' => 0,
+    },
     ...
- );
+ )->create_build_script;
+
+By using the C<new_module_build> method, the detected C<extra_linker_flags>
+value has been automatically passed into the new C<Module::Build> object.
 
 =head1 AUTHOR
 
