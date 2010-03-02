@@ -1,5 +1,11 @@
 Revision history for ExtUtils-CChecker
 
+0.03    CHANGES:
+         * Support defining compiler symbols based on successful test runs,
+           so XS code can be conditional on it
+         * Line-terminate test C code to avoid (harmless) warnings from some
+           C compilers
+
 0.02    CHANGES:
          * Support automatic construction of a preconfigured Module::Build
          * Also implement extra_compiler_flags for completeness

@@ -8,7 +8,7 @@ package ExtUtils::CChecker;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Carp;
 
@@ -169,8 +169,8 @@ sub fail
 =head2 $success = $cc->try_compile_run( $source )
 
 Try to complile, link, and execute a C program whose source is given. Returns
-true if the program compiled and linked, and exited sucessfully. Returns false
-if any of these steps fail.
+true if the program compiled and linked, and exited successfully. Returns
+false if any of these steps fail.
 
 Takes the following named arguments. If a single argument is given, that is
 taken as the source string.
@@ -188,6 +188,12 @@ Optional. If specified, pass extra flags to the compiler.
 =item * extra_linker_flags => ARRAY
 
 Optional. If specified, pass extra flags to the linker.
+
+=item * define => STRING
+
+Optional. If specified, then the named symbol will be defined on the C
+compiler commandline if the program ran successfully (by passing an option
+C<-DI<SYMBOL>>).
 
 =back
 
@@ -245,6 +251,8 @@ sub try_compile_run
    }
 
    unlink $test_exe;
+
+   push @{ $self->{extra_compiler_flags} }, "-D$args{define}" if defined $args{define};
 
    return 1;
 }
@@ -453,6 +461,56 @@ following example demonstrates how this would be handled.
 
 By using the C<new_module_build> method, the detected C<extra_linker_flags>
 value has been automatically passed into the new C<Module::Build> object.
+
+=head2 Testing For Optional Features
+
+Sometimes a function or ability may be optionally provided by the OS, or you
+may wish your module to be useable when only partial support is provided,
+without requiring it all to be present. In these cases it is traditional to
+detect the presence of this optional feature in the F<Build.PL> script, and
+define a symbol to declare this fact if it is found. The XS code can then use
+this symbol to select between differing implementations. For example, the
+F<Build.PL>:
+
+ use Module::Build;
+ use ExtUtils::CChecker;
+
+ my $cc = ExtUtils::CChecker->new;
+
+ $cc->try_compile_run(
+    define => "HAVE_MANGO",
+    source => <<'EOF' );
+ #include <mango.h>
+ #include <unistd.h>
+ int main(void) {
+   if(mango() != 0)
+     exit(1);
+   exit(0);
+ }
+ EOF
+
+ $cc->new_module_build(
+    ...
+ )->create_build_script;
+
+If the C code compiles and runs successfully, and exits with a true status,
+the symbol C<HAVE_MANGO> will be defined on the compiler commandline. This
+allows the XS code to detect it, for example
+
+ int
+ mango()
+   CODE:
+ #ifdef HAVE_MANGO
+     RETVAL = mango();
+ #else
+     croak("mango() not implemented");
+ #endif
+   OUTPUT:
+     RETVAL
+
+This module will then still compile even if the operating system lacks this
+particular function. Trying to invoke the function at runtime will simply
+throw an exception.
 
 =head1 AUTHOR
 
