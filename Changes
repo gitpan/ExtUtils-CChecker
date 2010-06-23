@@ -1,5 +1,9 @@
 Revision history for ExtUtils-CChecker
 
+0.04    CHANGES:
+         * Provide optional variants of ->find_include_dirs_for and
+           ->find_libs_for with try_... prefix
+
 0.03    CHANGES:
          * Support defining compiler symbols based on successful test runs,
            so XS code can be conditional on it

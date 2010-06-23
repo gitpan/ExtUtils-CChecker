@@ -8,7 +8,7 @@ package ExtUtils::CChecker;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Carp;
 
@@ -164,11 +164,19 @@ sub fail
    die $message;
 }
 
+sub define
+{
+   my $self = shift;
+   my ( $symbol ) = @_;
+
+   push @{ $self->{extra_compiler_flags} }, "-D$symbol";
+}
+
 =head2 $success = $cc->try_compile_run( %args )
 
 =head2 $success = $cc->try_compile_run( $source )
 
-Try to complile, link, and execute a C program whose source is given. Returns
+Try to compile, link, and execute a C program whose source is given. Returns
 true if the program compiled and linked, and exited successfully. Returns
 false if any of these steps fail.
 
@@ -252,7 +260,7 @@ sub try_compile_run
 
    unlink $test_exe;
 
-   push @{ $self->{extra_compiler_flags} }, "-D$args{define}" if defined $args{define};
+   $self->define( $args{define} ) if defined $args{define};
 
    return 1;
 }
@@ -285,15 +293,16 @@ sub assert_compile_run
    $self->try_compile_run( %args ) or $self->fail( $diag );
 }
 
-=head2 $cc->find_include_dirs_for( %args )
+=head2 $success = $cc->try_find_include_dirs_for( %args )
 
 Try to compile, link and execute the given source, using extra include
 directories.
 
 When a usable combination is found, the directories required are stored in the
 object for use in further compile operations, or returned by C<include_dirs>.
+The method then returns true.
 
-If no usable combination is found, an assertion message is thrown.
+If no a usable combination is found, it returns false.
 
 Takes the following arguments:
 
@@ -308,26 +317,22 @@ Source code to compile
 Gives a list of sets of dirs. Each set of dirs should be strings in its own
 array reference.
 
-=item * diag => STRING
+=item * define => STRING
 
-If present, this string will be appended to the failure message if one is
-generated.
+Optional. If specified, then the named symbol will be defined on the C
+compiler commandline if the program ran successfully (by passing an option
+C<-DI<SYMBOL>>).
 
 =back
 
 =cut
 
-sub find_include_dirs_for
+sub try_find_include_dirs_for
 {
    my $self = shift;
    my %args = @_;
 
-   my $diag = delete $args{diag};
-
    ref( my $dirs = $args{dirs} ) eq "ARRAY" or croak "Expected 'dirs' as ARRAY ref";
-
-   my @include_dirs;
-   push @include_dirs, $args{include_dirs} if exists $args{include_dirs};
 
    foreach my $d ( @$dirs ) {
       ref $d eq "ARRAY" or croak "Expected 'dirs' element as ARRAY ref";
@@ -335,22 +340,23 @@ sub find_include_dirs_for
       $self->try_compile_run( %args, include_dirs => $d ) or next;
 
       push @{ $self->{include_dirs} }, @$d;
-      return;
+
+      return 1;
    }
 
-   $self->fail( $diag );
+   return 0;
 }
 
-=head2 $cc->find_libs_for( %args )
+=head2 $success = $cc->try_find_libs_for( %args )
 
 Try to compile, link and execute the given source, when linked against a
 given set of extra libraries.
 
 When a usable combination is found, the libraries required are stored in the
 object for use in further link operations, or returned by
-C<extra_linker_flags>.
+C<extra_linker_flags>. The method then returns true.
 
-If no usable combination is found, an assertion message is thrown.
+If no usable combination is found, it returns false.
 
 Takes the following arguments:
 
@@ -365,21 +371,20 @@ Source code to compile
 Gives a list of sets of libraries. Each set of libraries should be
 space-separated.
 
-=item * diag => STRING
+=item * define => STRING
 
-If present, this string will be appended to the failure message if one is
-generated.
+Optional. If specified, then the named symbol will be defined on the C
+compiler commandline if the program ran successfully (by passing an option
+C<-DI<SYMBOL>>).
 
 =back
 
 =cut
 
-sub find_libs_for
+sub try_find_libs_for
 {
    my $self = shift;
    my %args = @_;
-
-   my $diag = delete $args{diag};
 
    ref( my $libs = $args{libs} ) eq "ARRAY" or croak "Expected 'libs' as ARRAY ref";
 
@@ -389,10 +394,47 @@ sub find_libs_for
       $self->try_compile_run( %args, extra_linker_flags => \@extra_linker_flags ) or next;
 
       push @{ $self->{extra_linker_flags} }, @extra_linker_flags;
-      return;
+
+      return 1;
    }
 
-   $self->fail( $diag );
+   return 0;
+}
+
+=head2 $cc->find_include_dirs_for( %args )
+
+=head2 $cc->find_libs_for( %args )
+
+Calls C<try_find_include_dirs_for> or C<try_find_libs_for> respectively. If it
+fails, die with an C<OS unsupported> message.
+
+Each method takes one extra optional argument:
+
+=over 8
+
+=item * diag => STRING
+
+If present, this string will be appended to the failure message if one is
+generated. It may provide more useful information to the user on why the OS is
+unsupported.
+
+=back
+
+=cut
+
+foreach ( qw( find_libs_for find_include_dirs_for ) ) {
+   my $trymethod = "try_$_";
+
+   my $code = sub {
+      my $self = shift;
+      my %args = @_;
+
+      my $diag = delete $args{diag};
+      $self->$trymethod( %args ) or $self->fail( $diag );
+   };
+
+   no strict 'refs';
+   *$_ = $code;
 }
 
 =head2 $mb = $cc->new_module_build( %args )
@@ -511,6 +553,46 @@ allows the XS code to detect it, for example
 This module will then still compile even if the operating system lacks this
 particular function. Trying to invoke the function at runtime will simply
 throw an exception.
+
+=head2 Linux Kernel Headers
+
+Operating systems built on top of the F<Linux> kernel often share a looser
+association with their kernel version than most other operating systems. It
+may be the case that the running kernel is newer, containing more features,
+than the distribution's F<libc> headers would believe. In such circumstances
+it can be difficult to make use of new socket options, C<ioctl()>s, etc..
+without having the constants that define them and their parameter structures,
+because the relevant header files are not visible to the compiler. In this
+case, there may be little choice but to pull in some of the kernel header
+files, which will provide the required constants and structures.
+
+The Linux kernel headers can be found using the F</lib/modules> directory. A
+fragment in F<Build.PL> like the following, may be appropriate.
+
+ chomp( my $uname_r = `uname -r` );
+
+ my @dirs = (
+    [],
+    [ "/lib/modules/$uname_r/source/include" ],
+ );
+
+ $cc->find_include_dirs_for(
+    diag => "no PF_MOONLASER",
+    dirs => \@dirs,
+    source => <<'EOF' );
+ #include <sys/socket.h>
+ #include <moon/laser.h>
+ int family = PF_MOONLASER;
+ struct laserwl lwl;
+ int main(int argc, char *argv[]) {
+   return 0;
+ }
+ EOF
+
+This fragment will first try to compile the program as it stands, hoping that
+the F<libc> headers will be sufficient. If it fails, it will then try
+including the kernel headers, which should make the constant and structure
+visible, allowing the program to compile.
 
 =head1 AUTHOR
 

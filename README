@@ -57,7 +57,7 @@ METHODS
 
   $success = $cc->try_compile_run( %args )
   $success = $cc->try_compile_run( $source )
-    Try to complile, link, and execute a C program whose source is given.
+    Try to compile, link, and execute a C program whose source is given.
     Returns true if the program compiled and linked, and exited
     successfully. Returns false if any of these steps fail.
 
@@ -95,15 +95,15 @@ METHODS
             if one is generated. It may provide more useful information to
             the user on why the OS is unsupported.
 
-  $cc->find_include_dirs_for( %args )
+  $success = $cc->try_find_include_dirs_for( %args )
     Try to compile, link and execute the given source, using extra include
     directories.
 
     When a usable combination is found, the directories required are stored
     in the object for use in further compile operations, or returned by
-    "include_dirs".
+    "include_dirs". The method then returns true.
 
-    If no usable combination is found, an assertion message is thrown.
+    If no a usable combination is found, it returns false.
 
     Takes the following arguments:
 
@@ -116,20 +116,21 @@ METHODS
             Gives a list of sets of dirs. Each set of dirs should be strings
             in its own array reference.
 
-    *       diag => STRING
+    *       define => STRING
 
-            If present, this string will be appended to the failure message
-            if one is generated.
+            Optional. If specified, then the named symbol will be defined on
+            the C compiler commandline if the program ran successfully (by
+            passing an option "-D*SYMBOL*").
 
-  $cc->find_libs_for( %args )
+  $success = $cc->try_find_libs_for( %args )
     Try to compile, link and execute the given source, when linked against a
     given set of extra libraries.
 
     When a usable combination is found, the libraries required are stored in
     the object for use in further link operations, or returned by
-    "extra_linker_flags".
+    "extra_linker_flags". The method then returns true.
 
-    If no usable combination is found, an assertion message is thrown.
+    If no usable combination is found, it returns false.
 
     Takes the following arguments:
 
@@ -142,10 +143,24 @@ METHODS
             Gives a list of sets of libraries. Each set of libraries should
             be space-separated.
 
+    *       define => STRING
+
+            Optional. If specified, then the named symbol will be defined on
+            the C compiler commandline if the program ran successfully (by
+            passing an option "-D*SYMBOL*").
+
+  $cc->find_include_dirs_for( %args )
+  $cc->find_libs_for( %args )
+    Calls "try_find_include_dirs_for" or "try_find_libs_for" respectively.
+    If it fails, die with an "OS unsupported" message.
+
+    Each method takes one extra optional argument:
+
     *       diag => STRING
 
             If present, this string will be appended to the failure message
-            if one is generated.
+            if one is generated. It may provide more useful information to
+            the user on why the OS is unsupported.
 
   $mb = $cc->new_module_build( %args )
     Construct and return a new Module::Build object, preconfigured with the
@@ -240,6 +255,46 @@ EXAMPLES
     This module will then still compile even if the operating system lacks
     this particular function. Trying to invoke the function at runtime will
     simply throw an exception.
+
+  Linux Kernel Headers
+    Operating systems built on top of the Linux kernel often share a looser
+    association with their kernel version than most other operating systems.
+    It may be the case that the running kernel is newer, containing more
+    features, than the distribution's libc headers would believe. In such
+    circumstances it can be difficult to make use of new socket options,
+    "ioctl()"s, etc.. without having the constants that define them and
+    their parameter structures, because the relevant header files are not
+    visible to the compiler. In this case, there may be little choice but to
+    pull in some of the kernel header files, which will provide the required
+    constants and structures.
+
+    The Linux kernel headers can be found using the /lib/modules directory.
+    A fragment in Build.PL like the following, may be appropriate.
+
+     chomp( my $uname_r = `uname -r` );
+
+     my @dirs = (
+        [],
+        [ "/lib/modules/$uname_r/source/include" ],
+     );
+
+     $cc->find_include_dirs_for(
+        diag => "no PF_MOONLASER",
+        dirs => \@dirs,
+        source => <<'EOF' );
+     #include <sys/socket.h>
+     #include <moon/laser.h>
+     int family = PF_MOONLASER;
+     struct laserwl lwl;
+     int main(int argc, char *argv[]) {
+       return 0;
+     }
+     EOF
+
+    This fragment will first try to compile the program as it stands, hoping
+    that the libc headers will be sufficient. If it fails, it will then try
+    including the kernel headers, which should make the constant and
+    structure visible, allowing the program to compile.
 
 AUTHOR
     Paul Evans <leonerd@leonerd.org.uk>
