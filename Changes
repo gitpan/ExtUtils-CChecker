@@ -1,5 +1,13 @@
 Revision history for ExtUtils-CChecker
 
+0.05    CHANGES:
+         * Added accessors for callers to push more library dirs or compiler
+           or linker flags
+
+        BUGFIXES:
+         * Ensure that ->new_module_build merges its args and internal
+           configuration correctly
+
 0.04    CHANGES:
          * Provide optional variants of ->find_include_dirs_for and
            ->find_libs_for with try_... prefix

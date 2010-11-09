@@ -8,7 +8,7 @@ package ExtUtils::CChecker;
 use strict;
 use warnings;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 use Carp;
 
@@ -128,6 +128,42 @@ sub extra_linker_flags
    return [ @{ $self->{extra_linker_flags} } ];
 }
 
+=head2 $cc->push_include_dirs( @dirs )
+
+Adds more include directories
+
+=cut
+
+sub push_include_dirs
+{
+   my $self = shift;
+   push @{ $self->{include_dirs} }, @_;
+}
+
+=head2 $cc->push_extra_compiler_flags( @flags )
+
+Adds more compiler flags
+
+=cut
+
+sub push_extra_compiler_flags
+{
+   my $self = shift;
+   push @{ $self->{extra_compiler_flags} }, @_;
+}
+
+=head2 $cc->push_extra_linker_flags
+
+Adds more linker flags
+
+=cut
+
+sub push_extra_linker_flags
+{
+   my $self = shift;
+   push @{ $self->{extra_linker_flags} }, @_;
+}
+
 sub cbuilder
 {
    my $self = shift;
@@ -169,7 +205,7 @@ sub define
    my $self = shift;
    my ( $symbol ) = @_;
 
-   push @{ $self->{extra_compiler_flags} }, "-D$symbol";
+   $self->push_extra_compiler_flags( "-D$symbol" );
 }
 
 =head2 $success = $cc->try_compile_run( %args )
@@ -339,7 +375,7 @@ sub try_find_include_dirs_for
 
       $self->try_compile_run( %args, include_dirs => $d ) or next;
 
-      push @{ $self->{include_dirs} }, @$d;
+      $self->push_include_dirs( @$d );
 
       return 1;
    }
@@ -393,7 +429,7 @@ sub try_find_libs_for
 
       $self->try_compile_run( %args, extra_linker_flags => \@extra_linker_flags ) or next;
 
-      push @{ $self->{extra_linker_flags} }, @extra_linker_flags;
+      $self->push_extra_linker_flags( @extra_linker_flags );
 
       return 1;
    }
@@ -452,14 +488,20 @@ required arguments to pass.
 sub new_module_build
 {
    my $self = shift;
+   my %args = @_;
+
    require Module::Build;
 
-   return Module::Build->new(
-      include_dirs         => $self->include_dirs,
-      extra_compiler_flags => $self->extra_compiler_flags,
-      extra_linker_flags   => $self->extra_linker_flags,
-      @_,
-   );
+   foreach my $key (qw( include_dirs extra_compiler_flags extra_linker_flags )) {
+      if( exists $args{$key} ) {
+         $args{$key} = [ @{ $self->$key }, @{ $args{$key} } ];
+      }
+      else {
+         $args{$key} = $self->$key;
+      }
+   }
+
+   return Module::Build->new( %args );
 }
 
 # Keep perl happy; keep Britain tidy

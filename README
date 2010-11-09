@@ -55,6 +55,15 @@ METHODS
     Returns the currently-configured extra linker flags in an ARRAY
     reference.
 
+  $cc->push_include_dirs( @dirs )
+    Adds more include directories
+
+  $cc->push_extra_compiler_flags( @flags )
+    Adds more compiler flags
+
+  $cc->push_extra_linker_flags
+    Adds more linker flags
+
   $success = $cc->try_compile_run( %args )
   $success = $cc->try_compile_run( $source )
     Try to compile, link, and execute a C program whose source is given.
