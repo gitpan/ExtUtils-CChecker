@@ -1,5 +1,9 @@
 Revision history for ExtUtils-CChecker
 
+0.06    CHANGES:
+         * Added 'defines_to' constructor arg for writing a "config.h" file
+           instead of -DFOO on compiler commandline
+
 0.05    CHANGES:
          * Added accessors for callers to push more library dirs or compiler
            or linker flags

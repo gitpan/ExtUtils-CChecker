@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2010 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2010-2011 -- leonerd@leonerd.org.uk
 
 package ExtUtils::CChecker;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use Carp;
 
@@ -24,7 +24,11 @@ libraries, or OS features
  use Module::Build;
  use ExtUtils::CChecker;
 
- my $check_PF_MOONLASER = <<'EOF';
+ my $cc = ExtUtils::CChecker->new;
+ 
+ $cc->assert_compile_run(
+    diag => "no PF_MOONLASER",
+    source => <<'EOF' );
  #include <stdio.h>
  #include <sys/socket.h>
  int main(int argc, char *argv[]) {
@@ -32,11 +36,6 @@ libraries, or OS features
    return 0;
  }
  EOF
-
- ExtUtils::CChecker->new->assert_compile_run(
-    diag => "no PF_MOONLASER",
-    source => $check_PF_MOONLASER,
- );
 
  Module::Build->new(
    ...
@@ -63,21 +62,35 @@ provides assistance here.
 
 =cut
 
-=head2 $cc = ExtUtils::CChecker->new
+=head2 $cc = ExtUtils::CChecker->new( %args )
 
-Returns a new instance of a C<ExtUtils::CChecker> object.
+Returns a new instance of a C<ExtUtils::CChecker> object. Takes teh following
+named parameters:
+
+=over 8
+
+=item defines_to => PATH
+
+If given, defined symbols will be written to a C preprocessor F<.h> file of
+the given name, instead of by adding extra C<-DI<SYMBOL>> arguments to the
+compiler flags.
+
+=back
 
 =cut
 
 sub new
 {
    my $class = shift;
+   my %args = @_;
 
    my $cb = ExtUtils::CBuilder->new( quiet => 1 );
 
    return bless {
       cb  => $cb,
       seq => 0,
+
+      defines_to => $args{defines_to},
 
       include_dirs         => [],
       extra_compiler_flags => [],
@@ -205,7 +218,17 @@ sub define
    my $self = shift;
    my ( $symbol ) = @_;
 
-   $self->push_extra_compiler_flags( "-D$symbol" );
+   if( $self->{defines_to} ) {
+      unless( $self->{defines_fh} ) {
+         open $self->{defines_fh}, ">", $self->{defines_to} or croak "Cannot open $self->{defines_to} for writing - $!";
+         $self->{defines_fh}->autoflush(1);
+      }
+
+      $self->{defines_fh}->print( "#define $symbol /**/\n" );
+   }
+   else {
+      $self->push_extra_compiler_flags( "-D$symbol" );
+   }
 }
 
 =head2 $success = $cc->try_compile_run( %args )
@@ -235,9 +258,9 @@ Optional. If specified, pass extra flags to the linker.
 
 =item * define => STRING
 
-Optional. If specified, then the named symbol will be defined on the C
-compiler commandline if the program ran successfully (by passing an option
-C<-DI<SYMBOL>>).
+Optional. If specified, then the named symbol will be defined if the program
+ran successfully. This will either on the C compiler commandline (by passing
+an option C<-DI<SYMBOL>>), or in the C<defines_to> file.
 
 =back
 
@@ -355,9 +378,9 @@ array reference.
 
 =item * define => STRING
 
-Optional. If specified, then the named symbol will be defined on the C
-compiler commandline if the program ran successfully (by passing an option
-C<-DI<SYMBOL>>).
+Optional. If specified, then the named symbol will be defined if the program
+ran successfully. This will either on the C compiler commandline (by passing
+an option C<-DI<SYMBOL>>), or in the C<defines_to> file.
 
 =back
 
@@ -409,9 +432,9 @@ space-separated.
 
 =item * define => STRING
 
-Optional. If specified, then the named symbol will be defined on the C
-compiler commandline if the program ran successfully (by passing an option
-C<-DI<SYMBOL>>).
+Optional. If specified, then the named symbol will be defined if the program
+ran successfully. This will either on the C compiler commandline (by passing
+an option C<-DI<SYMBOL>>), or in the C<defines_to> file.
 
 =back
 
@@ -517,7 +540,6 @@ Some operating systems provide the BSD sockets API in their primary F<libc>.
 Others keep it in a separate library which should be linked against. The
 following example demonstrates how this would be handled.
 
- use Module::Build;
  use ExtUtils::CChecker;
 
  my $cc = ExtUtils::CChecker->new;
@@ -556,7 +578,6 @@ define a symbol to declare this fact if it is found. The XS code can then use
 this symbol to select between differing implementations. For example, the
 F<Build.PL>:
 
- use Module::Build;
  use ExtUtils::CChecker;
 
  my $cc = ExtUtils::CChecker->new;
@@ -635,6 +656,34 @@ This fragment will first try to compile the program as it stands, hoping that
 the F<libc> headers will be sufficient. If it fails, it will then try
 including the kernel headers, which should make the constant and structure
 visible, allowing the program to compile.
+
+=head2 Creating a F<config.h>
+
+Sometimes, rather than setting defined symbols on the compiler commandline, it
+is preferrable to have them written to a C preprocessor include (F<.h>) file.
+
+ use ExtUtils::CChecker;
+
+ my $cc = ExtUtils::CChecker->new(
+    defines_to => "config.h",
+ );
+
+ $cc->try_compile_run(
+    define => "HAVE_MANGO",
+    source => <<'EOF' );
+ #include <mango.h>
+ #include <unistd.h>
+ #include "config.h"
+ int main(void) {
+   if(mango() != 0)
+     exit(1);
+   exit(0);
+ }
+ EOF
+
+Because the F<config.h> file is written and flushed after every define
+operation, it will still be useable in later C fragments to test for features
+detected in earlier ones.
 
 =head1 AUTHOR
 

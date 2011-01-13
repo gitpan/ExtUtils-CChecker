@@ -6,7 +6,11 @@ SYNOPSIS
      use Module::Build;
      use ExtUtils::CChecker;
 
-     my $check_PF_MOONLASER = <<'EOF';
+     my $cc = ExtUtils::CChecker->new;
+ 
+     $cc->assert_compile_run(
+        diag => "no PF_MOONLASER",
+        source => <<'EOF' );
      #include <stdio.h>
      #include <sys/socket.h>
      int main(int argc, char *argv[]) {
@@ -14,11 +18,6 @@ SYNOPSIS
        return 0;
      }
      EOF
-
-     ExtUtils::CChecker->new->assert_compile_run(
-        diag => "no PF_MOONLASER",
-        source => $check_PF_MOONLASER,
-     );
 
      Module::Build->new(
        ...
@@ -39,8 +38,14 @@ DESCRIPTION
     This class also provides assistance here.
 
 CONSTRUCTOR
-  $cc = ExtUtils::CChecker->new
-    Returns a new instance of a "ExtUtils::CChecker" object.
+  $cc = ExtUtils::CChecker->new( %args )
+    Returns a new instance of a "ExtUtils::CChecker" object. Takes teh
+    following named parameters:
+
+    defines_to => PATH
+            If given, defined symbols will be written to a C preprocessor .h
+            file of the given name, instead of by adding extra "-D*SYMBOL*"
+            arguments to the compiler flags.
 
 METHODS
   $dirs = $cc->include_dirs
@@ -88,9 +93,10 @@ METHODS
 
     *       define => STRING
 
-            Optional. If specified, then the named symbol will be defined on
-            the C compiler commandline if the program ran successfully (by
-            passing an option "-D*SYMBOL*").
+            Optional. If specified, then the named symbol will be defined if
+            the program ran successfully. This will either on the C compiler
+            commandline (by passing an option "-D*SYMBOL*"), or in the
+            "defines_to" file.
 
   $cc->assert_compile_run( %args )
     Calls "try_compile_run". If it fails, die with an "OS unsupported"
@@ -127,9 +133,10 @@ METHODS
 
     *       define => STRING
 
-            Optional. If specified, then the named symbol will be defined on
-            the C compiler commandline if the program ran successfully (by
-            passing an option "-D*SYMBOL*").
+            Optional. If specified, then the named symbol will be defined if
+            the program ran successfully. This will either on the C compiler
+            commandline (by passing an option "-D*SYMBOL*"), or in the
+            "defines_to" file.
 
   $success = $cc->try_find_libs_for( %args )
     Try to compile, link and execute the given source, when linked against a
@@ -154,9 +161,10 @@ METHODS
 
     *       define => STRING
 
-            Optional. If specified, then the named symbol will be defined on
-            the C compiler commandline if the program ran successfully (by
-            passing an option "-D*SYMBOL*").
+            Optional. If specified, then the named symbol will be defined if
+            the program ran successfully. This will either on the C compiler
+            commandline (by passing an option "-D*SYMBOL*"), or in the
+            "defines_to" file.
 
   $cc->find_include_dirs_for( %args )
   $cc->find_libs_for( %args )
@@ -186,7 +194,6 @@ EXAMPLES
     libc. Others keep it in a separate library which should be linked
     against. The following example demonstrates how this would be handled.
 
-     use Module::Build;
      use ExtUtils::CChecker;
 
      my $cc = ExtUtils::CChecker->new;
@@ -225,7 +232,6 @@ EXAMPLES
     found. The XS code can then use this symbol to select between differing
     implementations. For example, the Build.PL:
 
-     use Module::Build;
      use ExtUtils::CChecker;
 
      my $cc = ExtUtils::CChecker->new;
@@ -304,6 +310,34 @@ EXAMPLES
     that the libc headers will be sufficient. If it fails, it will then try
     including the kernel headers, which should make the constant and
     structure visible, allowing the program to compile.
+
+  Creating a config.h
+    Sometimes, rather than setting defined symbols on the compiler
+    commandline, it is preferrable to have them written to a C preprocessor
+    include (.h) file.
+
+     use ExtUtils::CChecker;
+
+     my $cc = ExtUtils::CChecker->new(
+        defines_to => "config.h",
+     );
+
+     $cc->try_compile_run(
+        define => "HAVE_MANGO",
+        source => <<'EOF' );
+     #include <mango.h>
+     #include <unistd.h>
+     #include "config.h"
+     int main(void) {
+       if(mango() != 0)
+         exit(1);
+       exit(0);
+     }
+     EOF
+
+    Because the config.h file is written and flushed after every define
+    operation, it will still be useable in later C fragments to test for
+    features detected in earlier ones.
 
 AUTHOR
     Paul Evans <leonerd@leonerd.org.uk>
