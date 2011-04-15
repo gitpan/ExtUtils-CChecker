@@ -8,7 +8,7 @@ package ExtUtils::CChecker;
 use strict;
 use warnings;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use Carp;
 
@@ -527,11 +527,6 @@ sub new_module_build
    return Module::Build->new( %args );
 }
 
-# Keep perl happy; keep Britain tidy
-1;
-
-__END__
-
 =head1 EXAMPLES
 
 =head2 Socket Libraries
@@ -657,15 +652,18 @@ the F<libc> headers will be sufficient. If it fails, it will then try
 including the kernel headers, which should make the constant and structure
 visible, allowing the program to compile.
 
-=head2 Creating a F<config.h>
+=head2 Creating an C<#include> file
 
 Sometimes, rather than setting defined symbols on the compiler commandline, it
 is preferrable to have them written to a C preprocessor include (F<.h>) file.
+This may be beneficial for cross-platform portability concerns, as not all C
+compilers may take extra C<-D> arguments on the command line, or platforms may
+have small length restrictions on the length of a command line.
 
  use ExtUtils::CChecker;
 
  my $cc = ExtUtils::CChecker->new(
-    defines_to => "config.h",
+    defines_to => "mymodule-config.h",
  );
 
  $cc->try_compile_run(
@@ -673,7 +671,7 @@ is preferrable to have them written to a C preprocessor include (F<.h>) file.
     source => <<'EOF' );
  #include <mango.h>
  #include <unistd.h>
- #include "config.h"
+ #include "mymodule-config.h"
  int main(void) {
    if(mango() != 0)
      exit(1);
@@ -681,10 +679,18 @@ is preferrable to have them written to a C preprocessor include (F<.h>) file.
  }
  EOF
 
-Because the F<config.h> file is written and flushed after every define
-operation, it will still be useable in later C fragments to test for features
-detected in earlier ones.
+Because the F<mymodule-config.h> file is written and flushed after every
+define operation, it will still be useable in later C fragments to test for
+features detected in earlier ones.
+
+It is suggested not to name the file simply F<config.h>, as the core of Perl
+itself has a file of that name containing its own compile-time detected
+configuration. A confusion between the two could lead to surprising results.
 
 =head1 AUTHOR
 
 Paul Evans <leonerd@leonerd.org.uk>
+
+=cut
+
+0x55AA;
