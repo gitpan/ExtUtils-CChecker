@@ -1,5 +1,5 @@
 NAME
-    "ExtUtils::CChecker" - configure-time utilities for using C headers,
+    `ExtUtils::CChecker' - configure-time utilities for using C headers,
     libraries, or OS features
 
 SYNOPSIS
@@ -39,12 +39,12 @@ DESCRIPTION
 
 CONSTRUCTOR
   $cc = ExtUtils::CChecker->new( %args )
-    Returns a new instance of a "ExtUtils::CChecker" object. Takes teh
+    Returns a new instance of a `ExtUtils::CChecker' object. Takes teh
     following named parameters:
 
     defines_to => PATH
             If given, defined symbols will be written to a C preprocessor .h
-            file of the given name, instead of by adding extra "-D*SYMBOL*"
+            file of the given name, instead of by adding extra `-D*SYMBOL*'
             arguments to the compiler flags.
 
 METHODS
@@ -66,7 +66,7 @@ METHODS
   $cc->push_extra_compiler_flags( @flags )
     Adds more compiler flags
 
-  $cc->push_extra_linker_flags
+  $cc->push_extra_linker_flags( @flags )
     Adds more linker flags
 
   $success = $cc->try_compile_run( %args )
@@ -78,34 +78,29 @@ METHODS
     Takes the following named arguments. If a single argument is given, that
     is taken as the source string.
 
-    *       source => STRING
-
+    * source => STRING
             The source code of the C program to try compiling, building, and
             running.
 
-    *       extra_compiler_flags => ARRAY
-
+    * extra_compiler_flags => ARRAY
             Optional. If specified, pass extra flags to the compiler.
 
-    *       extra_linker_flags => ARRAY
-
+    * extra_linker_flags => ARRAY
             Optional. If specified, pass extra flags to the linker.
 
-    *       define => STRING
-
+    * define => STRING
             Optional. If specified, then the named symbol will be defined if
             the program ran successfully. This will either on the C compiler
-            commandline (by passing an option "-D*SYMBOL*"), or in the
-            "defines_to" file.
+            commandline (by passing an option `-D*SYMBOL*'), or in the
+            `defines_to' file.
 
   $cc->assert_compile_run( %args )
-    Calls "try_compile_run". If it fails, die with an "OS unsupported"
+    Calls `try_compile_run'. If it fails, die with an `OS unsupported'
     message. Useful to call from Build.PL or Makefile.PL.
 
     Takes one extra optional argument:
 
-    *       diag => STRING
-
+    * diag => STRING
             If present, this string will be appended to the failure message
             if one is generated. It may provide more useful information to
             the user on why the OS is unsupported.
@@ -116,27 +111,24 @@ METHODS
 
     When a usable combination is found, the directories required are stored
     in the object for use in further compile operations, or returned by
-    "include_dirs". The method then returns true.
+    `include_dirs'. The method then returns true.
 
     If no a usable combination is found, it returns false.
 
     Takes the following arguments:
 
-    *       source => STRING
-
+    * source => STRING
             Source code to compile
 
-    *       dirs => ARRAY of ARRAYs
-
+    * dirs => ARRAY of ARRAYs
             Gives a list of sets of dirs. Each set of dirs should be strings
             in its own array reference.
 
-    *       define => STRING
-
+    * define => STRING
             Optional. If specified, then the named symbol will be defined if
             the program ran successfully. This will either on the C compiler
-            commandline (by passing an option "-D*SYMBOL*"), or in the
-            "defines_to" file.
+            commandline (by passing an option `-D*SYMBOL*'), or in the
+            `defines_to' file.
 
   $success = $cc->try_find_libs_for( %args )
     Try to compile, link and execute the given source, when linked against a
@@ -144,48 +136,44 @@ METHODS
 
     When a usable combination is found, the libraries required are stored in
     the object for use in further link operations, or returned by
-    "extra_linker_flags". The method then returns true.
+    `extra_linker_flags'. The method then returns true.
 
     If no usable combination is found, it returns false.
 
     Takes the following arguments:
 
-    *       source => STRING
-
+    * source => STRING
             Source code to compile
 
-    *       libs => ARRAY of STRINGs
-
+    * libs => ARRAY of STRINGs
             Gives a list of sets of libraries. Each set of libraries should
             be space-separated.
 
-    *       define => STRING
-
+    * define => STRING
             Optional. If specified, then the named symbol will be defined if
             the program ran successfully. This will either on the C compiler
-            commandline (by passing an option "-D*SYMBOL*"), or in the
-            "defines_to" file.
+            commandline (by passing an option `-D*SYMBOL*'), or in the
+            `defines_to' file.
 
   $cc->find_include_dirs_for( %args )
   $cc->find_libs_for( %args )
-    Calls "try_find_include_dirs_for" or "try_find_libs_for" respectively.
-    If it fails, die with an "OS unsupported" message.
+    Calls `try_find_include_dirs_for' or `try_find_libs_for' respectively.
+    If it fails, die with an `OS unsupported' message.
 
     Each method takes one extra optional argument:
 
-    *       diag => STRING
-
+    * diag => STRING
             If present, this string will be appended to the failure message
             if one is generated. It may provide more useful information to
             the user on why the OS is unsupported.
 
   $mb = $cc->new_module_build( %args )
     Construct and return a new Module::Build object, preconfigured with the
-    "include_dirs", "extra_compiler_flags" and "extra_linker_flags" options
+    `include_dirs', `extra_compiler_flags' and `extra_linker_flags' options
     that have been configured on this object, by the above methods.
 
     This is provided as a simple shortcut for the common use case, that a
-    Build.PL file is using the "ExtUtils::CChecker" object to detect the
+    Build.PL file is using the `ExtUtils::CChecker' object to detect the
     required arguments to pass.
 
 EXAMPLES
@@ -219,9 +207,9 @@ EXAMPLES
         ...
      )->create_build_script;
 
-    By using the "new_module_build" method, the detected
-    "extra_linker_flags" value has been automatically passed into the new
-    "Module::Build" object.
+    By using the `new_module_build' method, the detected
+    `extra_linker_flags' value has been automatically passed into the new
+    `Module::Build' object.
 
   Testing For Optional Features
     Sometimes a function or ability may be optionally provided by the OS, or
@@ -253,7 +241,7 @@ EXAMPLES
      )->create_build_script;
 
     If the C code compiles and runs successfully, and exits with a true
-    status, the symbol "HAVE_MANGO" will be defined on the compiler
+    status, the symbol `HAVE_MANGO' will be defined on the compiler
     commandline. This allows the XS code to detect it, for example
 
      int
@@ -277,7 +265,7 @@ EXAMPLES
     It may be the case that the running kernel is newer, containing more
     features, than the distribution's libc headers would believe. In such
     circumstances it can be difficult to make use of new socket options,
-    "ioctl()"s, etc.. without having the constants that define them and
+    `ioctl()'s, etc.. without having the constants that define them and
     their parameter structures, because the relevant header files are not
     visible to the compiler. In this case, there may be little choice but to
     pull in some of the kernel header files, which will provide the required
@@ -311,11 +299,11 @@ EXAMPLES
     including the kernel headers, which should make the constant and
     structure visible, allowing the program to compile.
 
-  Creating an "#include" file
+  Creating an `#include' file
     Sometimes, rather than setting defined symbols on the compiler
     commandline, it is preferrable to have them written to a C preprocessor
     include (.h) file. This may be beneficial for cross-platform portability
-    concerns, as not all C compilers may take extra "-D" arguments on the
+    concerns, as not all C compilers may take extra `-D' arguments on the
     command line, or platforms may have small length restrictions on the
     length of a command line.
 

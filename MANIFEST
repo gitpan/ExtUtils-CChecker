@@ -13,3 +13,4 @@ t/03accessors.t
 t/04module_build.t
 t/05defines_to.t
 t/99pod.t
+META.json

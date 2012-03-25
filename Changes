@@ -1,5 +1,9 @@
 Revision history for ExtUtils-CChecker
 
+0.08    CHANGES:
+         * Include PID in test file names to guard against collisions when
+           building concurrently (RT76013)
+
 0.07    CHANGES:
          * Use Test::Fatal instead of Test::Exception
          * Advise against calling it "config.h" as that gets confused with

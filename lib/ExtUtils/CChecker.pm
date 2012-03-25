@@ -8,7 +8,7 @@ package ExtUtils::CChecker;
 use strict;
 use warnings;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 use Carp;
 
@@ -165,7 +165,7 @@ sub push_extra_compiler_flags
    push @{ $self->{extra_compiler_flags} }, @_;
 }
 
-=head2 $cc->push_extra_linker_flags
+=head2 $cc->push_extra_linker_flags( @flags )
 
 Adds more linker flags
 
@@ -275,7 +275,7 @@ sub try_compile_run
 
    my $seq = $self->{seq}++;
 
-   my $test_source = "test-$seq.c";
+   my $test_source = "test-$$-$seq.c";
 
    open( my $test_source_fh, "> $test_source" ) or die "Cannot write $test_source - $!";
 
