@@ -1,5 +1,10 @@
 Revision history for ExtUtils-CChecker
 
+0.09    2013/12/12 17:10:39
+        [CHANGES]
+         * Add a 'quiet' option so EU:CB's quiet can be disabled (RT91363)
+         * Fixed some typoes in docs
+
 0.08    CHANGES:
          * Include PID in test file names to guard against collisions when
            building concurrently (RT76013)

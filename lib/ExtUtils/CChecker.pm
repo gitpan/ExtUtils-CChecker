@@ -8,7 +8,7 @@ package ExtUtils::CChecker;
 use strict;
 use warnings;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 use Carp;
 
@@ -43,7 +43,7 @@ libraries, or OS features
 
 =head1 DESCRIPTION
 
-Often Perl modules are written to wrap functionallity found in existing C
+Often Perl modules are written to wrap functionality found in existing C
 headers, libraries, or to use OS-specific features. It is useful in the
 F<Build.PL> or F<Makefile.PL> file to check for the existance of these
 requirements before attempting to actually build the module.
@@ -64,7 +64,7 @@ provides assistance here.
 
 =head2 $cc = ExtUtils::CChecker->new( %args )
 
-Returns a new instance of a C<ExtUtils::CChecker> object. Takes teh following
+Returns a new instance of a C<ExtUtils::CChecker> object. Takes the following
 named parameters:
 
 =over 8
@@ -75,6 +75,12 @@ If given, defined symbols will be written to a C preprocessor F<.h> file of
 the given name, instead of by adding extra C<-DI<SYMBOL>> arguments to the
 compiler flags.
 
+=item quiet => BOOL
+
+If given, sets the C<quiet> option to the underlying C<ExtUtils::CBuilder>
+instance. If absent, defaults to enabled. To disable quietness, i.e. to print
+more verbosely, pass a defined-but-false value, such as C<0>.
+
 =back
 
 =cut
@@ -84,7 +90,10 @@ sub new
    my $class = shift;
    my %args = @_;
 
-   my $cb = ExtUtils::CBuilder->new( quiet => 1 );
+   my $quiet = 1;
+   $quiet = 0 if defined $args{quiet} and !$args{quiet};
+
+   my $cb = ExtUtils::CBuilder->new( quiet => $quiet );
 
    return bless {
       cb  => $cb,
